@@ -57,9 +57,7 @@ class ScrollablePositionedList extends StatefulWidget {
     this.addAutomaticKeepAlives = true,
     this.addRepaintBoundaries = true,
     this.minCacheExtent,
-  })  : assert(itemCount != null),
-        assert(itemBuilder != null),
-        itemPositionsNotifier = itemPositionsListener as ItemPositionsNotifier?,
+  })  : itemPositionsNotifier = itemPositionsListener as ItemPositionsNotifier?,
         scrollOffsetNotifier = scrollOffsetListener as ScrollOffsetNotifier?,
         separatorBuilder = null,
         super(key: key);
@@ -87,9 +85,7 @@ class ScrollablePositionedList extends StatefulWidget {
     this.addAutomaticKeepAlives = true,
     this.addRepaintBoundaries = true,
     this.minCacheExtent,
-  })  : assert(itemCount != null),
-        assert(itemBuilder != null),
-        assert(separatorBuilder != null),
+  })  : assert(separatorBuilder != null),
         itemPositionsNotifier = itemPositionsListener as ItemPositionsNotifier?,
         scrollOffsetNotifier = scrollOffsetListener as ScrollOffsetNotifier?,
         super(key: key);
@@ -193,6 +189,15 @@ class ScrollablePositionedList extends StatefulWidget {
 /// Controller to jump or scroll to a particular position in a
 /// [ScrollablePositionedList].
 class ItemScrollController {
+
+
+  ItemScrollController({ ScrollController? scrollController }) {
+    this.scrollController = scrollController ?? ScrollController(keepScrollOffset: false);
+  }
+
+  /// Exposes [ScrollablePositionedList]'s Primary scroll controller
+  ///
+  ScrollController? scrollController;
   /// Whether any ScrollablePositionedList objects are attached this object.
   ///
   /// If `false`, then [jumpTo] and [scrollTo] must not be called.
@@ -308,11 +313,11 @@ class ScrollOffsetController {
 class _ScrollablePositionedListState extends State<ScrollablePositionedList>
     with TickerProviderStateMixin {
   /// Details for the primary (active) [ListView].
-  var primary = _ListDisplayDetails(const ValueKey('Ping'));
+  late _ListDisplayDetails primary;
 
   /// Details for the secondary (transitional) [ListView] that is temporarily
   /// shown when scrolling a long distance.
-  var secondary = _ListDisplayDetails(const ValueKey('Pong'));
+  late _ListDisplayDetails secondary;
 
   final opacity = ProxyAnimation(const AlwaysStoppedAnimation<double>(0));
 
@@ -320,7 +325,7 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
 
   bool _isTransitioning = false;
 
-  var _animationController;
+  AnimationController ?_animationController;
 
   double previousOffset = 0;
 
@@ -328,6 +333,8 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
   void initState() {
     super.initState();
     ItemPosition? initialPosition = PageStorage.of(context).readState(context);
+    primary = _ListDisplayDetails(const ValueKey('Ping'),  widget.itemScrollController?.scrollController ?? ScrollController(keepScrollOffset: false));
+    secondary = _ListDisplayDetails(const ValueKey('Pong'), ScrollController(keepScrollOffset: false));
     primary.target = initialPosition?.index ?? widget.initialScrollIndex;
     primary.alignment =
         initialPosition?.itemLeadingEdge ?? widget.initialAlignment;
@@ -566,7 +573,7 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
           _animationController =
               AnimationController(vsync: this, duration: duration)..forward();
           opacity.parent = _opacityAnimation(opacityAnimationWeights)
-              .animate(_animationController);
+              .animate(_animationController!);
           secondary.scrollController.jumpTo(-direction *
               (_screenScrollCount *
                       primary.scrollController.position.viewportDimension -
@@ -623,8 +630,8 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
   }
 
   Animatable<double> _opacityAnimation(List<double> opacityAnimationWeights) {
-    final startOpacity = 0.0;
-    final endOpacity = 1.0;
+    const startOpacity = 0.0;
+    const endOpacity = 1.0;
     return TweenSequence<double>(<TweenSequenceItem<double>>[
       TweenSequenceItem<double>(
           tween: ConstantTween<double>(startOpacity),
@@ -655,10 +662,10 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
 }
 
 class _ListDisplayDetails {
-  _ListDisplayDetails(this.key);
+  _ListDisplayDetails(this.key, this.scrollController);
 
   final itemPositionsNotifier = ItemPositionsNotifier();
-  final scrollController = ScrollController(keepScrollOffset: false);
+  final ScrollController scrollController;
 
   /// The index of the item to scroll to.
   int target = 0;
@@ -670,3 +677,4 @@ class _ListDisplayDetails {
 
   final Key key;
 }
+
